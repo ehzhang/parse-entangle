@@ -15,6 +15,6 @@ npm install
 node server.js
 ```
 
-Client side code is up in client/index.html.
+Client side code is up in client/index.html, or you can visit http://ehzhang.me/parse-entangle/client/
 
 Open that up, and play around!
