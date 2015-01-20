@@ -7,7 +7,7 @@
 
   // Routing Services
   var PARSE_API_VERSION = '1';
-  var PARSE_API_ENDPOINT = 'https://api.parse.com/' + PARSE_API_VERSION + '/';
+  var PARSE_API_ENDPOINT = 'https://api.parse.com/' + PARSE_API_VERSION;
 
   // Socket Server
   var SOCKET_SERVER = 'http://localhost:3000/entangle';
@@ -26,9 +26,9 @@
 
     xmlhttp.onreadystatechange = function (){
       // Success
-      if ((xmlhttp.readyState==4 || xmlhttp.readyState==2) && String(xmlhttp.status)[0] == 2){
-        if (success){
-          return success(JSON.parse(xmlhttp.responseText));
+      if ((xmlhttp.readyState == 4 || xmlhttp.readyState == 2) && String(xmlhttp.status)[0] == 2){
+        if (success && xmlhttp.responseText){
+          success(JSON.parse(xmlhttp.responseText));
         };
       };
     };
@@ -50,11 +50,26 @@
   };
 
   function handleData(data){
+    var e = Parse.Entanglements[data.collection];
+
     if (data.msg == 'added') {
-      console.log(data.collection + ' - New Object!')
+      console.log(data.collection + ' - New Object: ' + data.id)
       // Take the new data, and add it to our local store.
-      var e = Parse.Entanglements[data.collection];
-      e.db[data.id] = data.fields;
+      e.db[data.id] = new EObj(data.fields);
+    }
+    if (data.msg == 'changed') {
+      console.log(data.collection + ' - Object Changed: ' + data.id)
+      // Update the keys in the db
+      if (e.db[data.id]){
+        for (key in data.fields){
+          e.db[data.id][key] = data.fields[key];
+          e.db[data.id][key]._resetChanges();
+        }
+      }
+    }
+    if (data.msg == 'removed') {
+      console.log(data.collection + ' - Object Removed: ' + data.id)
+      delete e.db[data.id];
     }
   };
 
@@ -83,19 +98,44 @@
     };
 
     this.update = function(id, body, callback){
-      var r = new Request('PUT', endpoint + (id ? id : ""), callback);
+      var r = new Request('PUT', endpoint + (id ? id : ""), body, callback);
     };
+
+    this.delete = function(id, callback){
+      var r = new Request('DELETE', endpoint + (id ? id : ""), null, callback);
+    };
+
   };
 
   var ClassService = function(className){
     this.className = className;
-    return new Service('/classes/' + className);
+    return new Service('/classes/' + className + '/');
   }
 
   // ----------------------------------------------------------
 
   // Keep track of all of the Entanglements
   Parse.Entanglements = {};
+
+  // Extend an object with getters and setters
+  var EObj = function(obj){
+    // Extend the object
+    for (key in obj){
+      this[key] = obj[key];
+    }
+
+    // Keep track of changes to the object
+    this._changes = {}
+  }
+
+  EObj.prototype.set = function(prop, value){
+    this[prop] = value;
+    this._changes[prop] = value;
+  }
+
+  EObj.prototype.resetChanges = function(){
+    this._changes = {};
+  }
 
   // Entanglements act as local 'databases'
   var _e = Parse.Entanglement = function(className){
@@ -114,7 +154,7 @@
     this.service.get(null, function(response){
       var results = response.results;
       for (var i = results.length - 1; i >= 0; i--) {
-        this.db[results[i].objectId] = results[i]
+        this.db[results[i].objectId] = new EObj(results[i]);
       };
     }.bind(this))
   }
@@ -139,15 +179,31 @@
   // Update an object in the collection
   _e.prototype.update = function(id, callback) {
     // Update the object currently in the db
+    var db = this.db;
+    this.service.update(id, this.db[id]._changes, function(result){
+      // Successfully updated! Tell the world!
+      socket.send(JSON.stringify({
+        msg: 'changed',
+        collection: this.className,
+        id: id,
+        fields: db[id]._changes
+      }));
+    })
   };
 
   _e.prototype.destroy = function(id, callback) {
-    delete this.db[id];
+    // Remove the stuff
+    this.service.delete(id, function(result){
+      if (!result.error){
+        // Object deleted, tell the world!
+        socket.send(JSON.stringify({
+          msg: 'removed',
+          collection: this.className,
+          id: id,
+        }));
+      }
+    })
   }
-
-  _e.prototype.find = function(id, callback) {
-
-  };
 
   _e.prototype.fetch = function(){
     var docs = [];
@@ -160,5 +216,8 @@
 })()
 
 var Messages = new Parse.Entanglement('Messages');
-
 Messages.subscribe('all');
+
+var Comments = new Parse.Entanglement('Comments');
+Comments.subscribe('all');
+
