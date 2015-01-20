@@ -14,6 +14,8 @@
       var Messages = new Parse.Entanglement('Messages');
       Messages.subscribe('all');
 
+      var Comments = new Parse.Entanglement('Comments');
+
       var myApp = angular.module('myApp',[]);
 
       myApp.controller('MessagesController', ['$scope', function($scope) {

@@ -154,7 +154,7 @@
   // Entanglements act as local 'databases'
   var _e = Parse.Entanglement = function(className){
     // Name of the class collection
-    this.className;
+    this.className = className;
     // Key value store for all objects
     this.db = {};
     // Create a service for this object
