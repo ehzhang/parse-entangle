@@ -10,7 +10,9 @@ To use:
 Start up the server in the server directory.
 
 > cd server
+
 > npm install
+
 > node server.js
 
 Client side code is up in client/index.html.
