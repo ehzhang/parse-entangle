@@ -1,0 +1,26 @@
+{
+  "name": "entangle-server",
+  "version": "0.0.0",
+  "description": "socket server for parse entangle",
+  "main": "server.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ehzhang/parse-entangle"
+  },
+  "keywords": [
+    "parse",
+    "entangle"
+  ],
+  "author": "ehzhang@mit.edu",
+  "license": "GPL",
+  "bugs": {
+    "url": "https://github.com/ehzhang/parse-entangle/issues"
+  },
+  "homepage": "https://github.com/ehzhang/parse-entangle",
+  "dependencies": {
+    "sockjs": "^0.3.12"
+  }
+}
