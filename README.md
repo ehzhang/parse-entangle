@@ -9,7 +9,7 @@ To use:
 
 Start up the server in the server directory.
 
-""" sh
+"""sh
 cd server
 npm install
 node server.js
