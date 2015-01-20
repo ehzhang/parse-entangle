@@ -35,6 +35,7 @@
   };
 
   // SockJS ---------------------------------------------------
+  var socket;
   function attemptConnection(){
 
     socket = new SockJS(SOCKET_SERVER);
@@ -102,27 +103,26 @@
 
   // Services to wrap API Calls -------------------------------
   var Service = function(path){
-    var endpoint = PARSE_API_ENDPOINT + path;
-    this.get = function(id, callback){
-      var r = new Request('GET', endpoint + (id ? id : ""), null, callback);
-    };
+    this.endpoint = PARSE_API_ENDPOINT + path;
+  }
 
-    this.create = function(obj, callback){
-      var r = new Request('POST', endpoint, obj, callback);
-    };
+  Service.prototype.get = function(id, callback){
+    return new Request('GET', this.endpoint + (id ? id : ""), null, callback);
+  };
 
-    this.update = function(id, body, callback){
-      var r = new Request('PUT', endpoint + (id ? id : ""), body, callback);
-    };
+  Service.prototype.create = function(obj, callback){
+    return new Request('POST', this.endpoint, obj, callback);
+  };
 
-    this.delete = function(id, callback){
-      var r = new Request('DELETE', endpoint + (id ? id : ""), null, callback);
-    };
+  Service.prototype.update = function(id, body, callback){
+    return new Request('PUT', this.endpoint + (id ? id : ""), body, callback);
+  };
 
+  Service.prototype.delete = function(id, callback){
+    return new Request('DELETE', this.endpoint + (id ? id : ""), null, callback);
   };
 
   var ClassService = function(className){
-    this.className = className;
     return new Service('/classes/' + className + '/');
   }
 
@@ -181,6 +181,7 @@
 
   // Insert an object into the collection
   _e.prototype.insert = function(obj, success, error) {
+    var e = this;
     // Save the object over on Parse
     this.service.create(obj, function(result){
       // YAY, SUCCESS, TELL EVERYONE!
@@ -189,7 +190,7 @@
 
       socket.send(JSON.stringify({
         msg: 'added',
-        collection: this.className,
+        collection: e.className,
         id: result.objectId,
         fields: obj
       }));
@@ -201,14 +202,14 @@
   // Update an object in the collection
   _e.prototype.update = function(id, success) {
     // Update the object currently in the db
-    var db = this.db;
+    var e = this;
     this.service.update(id, this.db[id]._changes, function(result){
       // Successfully updated! Tell the world!
       socket.send(JSON.stringify({
         msg: 'changed',
-        collection: this.className,
+        collection: e.className,
         id: id,
-        fields: db[id]._changes
+        fields: e.db[id]._changes
       }));
       success();
     })
@@ -216,12 +217,13 @@
 
   _e.prototype.destroy = function(id, success) {
     // Remove the stuff
+    var e = this;
     this.service.delete(id, function(result){
       if (!result.error){
         // Object deleted, tell the world!
         socket.send(JSON.stringify({
           msg: 'removed',
-          collection: this.className,
+          collection: e.className,
           id: id,
         }));
         success();
