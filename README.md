@@ -21,6 +21,8 @@ Client side code is up in client/index.html, or you can visit http://ehzhang.me/
 
 You can see the real time in action by opening up two windodws side by side, and typing into each one!
 
+Demo Video: https://www.dropbox.com/s/wzn2jumxlur6q9u/parse-entangle.mov?dl=0
+
 How does it work?
 -----------------
 
