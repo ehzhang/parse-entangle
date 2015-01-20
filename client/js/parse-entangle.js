@@ -35,19 +35,29 @@
   };
 
   // SockJS ---------------------------------------------------
-  socket = new SockJS(SOCKET_SERVER);
+  function attemptConnection(){
 
-  socket.onopen = function() {
-    console.log('Connection Open');
-  };
+    socket = new SockJS(SOCKET_SERVER);
 
-  socket.onmessage = function(e) {
-    handleData(JSON.parse(e.data));
-  };
+    socket.onopen = function() {
+      console.log('Connection Open');
+    };
 
-  socket.onclose = function() {
-    console.log('Connection Closed');
-  };
+    socket.onmessage = function(e) {
+      handleData(JSON.parse(e.data));
+    };
+
+    socket.onclose = function() {
+      console.log('Connection Closed');
+    };
+  }
+
+  try {
+    attemptConnection();
+  } catch(e) {
+    console.log("Could not establish connection.");
+  }
+
 
   function handleData(data){
     var e = Parse.Entanglements[data.collection];
@@ -63,14 +73,18 @@
       if (e.db[data.id]){
         for (key in data.fields){
           e.db[data.id][key] = data.fields[key];
-          e.db[data.id][key]._resetChanges();
         }
+        e.db[data.id]._resetChanges();
       }
     }
+
     if (data.msg == 'removed') {
       console.log(data.collection + ' - Object Removed: ' + data.id)
       delete e.db[data.id];
     }
+
+    // Fire an onChange listener if there is one
+    if (e.onChange){ e.onChange() }
   };
 
   // DDP Protocol ---------------------------------------------
@@ -133,7 +147,7 @@
     this._changes[prop] = value;
   }
 
-  EObj.prototype.resetChanges = function(){
+  EObj.prototype._resetChanges = function(){
     this._changes = {};
   }
 
@@ -156,7 +170,13 @@
       for (var i = results.length - 1; i >= 0; i--) {
         this.db[results[i].objectId] = new EObj(results[i]);
       };
+
+      if (this.onChange){
+        this.onChange();
+      }
     }.bind(this))
+
+
   }
 
   // Insert an object into the collection
@@ -173,11 +193,13 @@
         id: result.objectId,
         fields: obj
       }));
+
+      success();
     })
   };
 
   // Update an object in the collection
-  _e.prototype.update = function(id, callback) {
+  _e.prototype.update = function(id, success) {
     // Update the object currently in the db
     var db = this.db;
     this.service.update(id, this.db[id]._changes, function(result){
@@ -188,10 +210,11 @@
         id: id,
         fields: db[id]._changes
       }));
+      success();
     })
   };
 
-  _e.prototype.destroy = function(id, callback) {
+  _e.prototype.destroy = function(id, success) {
     // Remove the stuff
     this.service.delete(id, function(result){
       if (!result.error){
@@ -201,6 +224,7 @@
           collection: this.className,
           id: id,
         }));
+        success();
       }
     })
   }
@@ -214,10 +238,3 @@
   }
 
 })()
-
-var Messages = new Parse.Entanglement('Messages');
-Messages.subscribe('all');
-
-var Comments = new Parse.Entanglement('Comments');
-Comments.subscribe('all');
-
