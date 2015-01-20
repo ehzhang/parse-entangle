@@ -34,6 +34,8 @@ When inserting, updating, or destroying an Object in the **Entanglement** using 
 
 This simple server, which exists to only transmit messages via sockets, takes the message and broadcasts it to all other clients that have an alive socket connection.
 
+With this message now received, clients can patch their data accordingly.
+
 ### The Message
 
 The message that allows for insert, update, and destroy is inspired by the DDP Protocol created by Meteor (https://www.meteor.com/ddp).
